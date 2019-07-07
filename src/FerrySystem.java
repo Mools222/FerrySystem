@@ -15,13 +15,13 @@ import java.util.ArrayList;
 import java.util.Comparator;
 
 public class FerrySystem extends Application {
-    private ArrayList<Vehicle> vehiclesLeftSide = new ArrayList<>();
-    private ArrayList<Vehicle> vehiclesRightSide = new ArrayList<>();
+    private ArrayList<Vehicle> vehiclesLeftSide = new ArrayList<>(), vehiclesRightSide = new ArrayList<>();
     private Label labelVehicleType = new Label("Vehicle type: ");
     private Label labelVehicleWeight = new Label("Vehicle weight: ");
     private Label labelLoadWeight = new Label("Load weight: ");
     private Label labelWeightDistribution = new Label("Weight distribution: ");
     private Label labelSpace = new Label("Space: ");
+    private int totalWeightLeftSide, totalWeightRightSide;
 
     @Override
     public void start(Stage primaryStage) {
@@ -36,12 +36,9 @@ public class FerrySystem extends Application {
         VBox vBoxExtraInfo = new VBox(labelExtraInfo, labelVehicleType, labelVehicleWeight, labelLoadWeight, labelWeightDistribution, labelSpace);
         vBoxExtraInfo.setPadding(new Insets(0, 50, 0, 0));
 
-        int totalWeightLeftSide = getWeight(vehiclesLeftSide);
-        int totalWeightRightSide = getWeight(vehiclesRightSide);
-
-        Label labelWeightLeftSide = new Label("Total weight: " + totalWeightLeftSide + " kg.");
+        Label labelWeightLeftSide = new Label(String.format("Total weight: %,d kg.", totalWeightLeftSide));
         labelWeightLeftSide.setFont(Font.font("Times New Roman", FontWeight.BOLD, 20));
-        Label labelWeightRightSide = new Label("Total weight: " + totalWeightRightSide + " kg.");
+        Label labelWeightRightSide = new Label(String.format("Total weight: %,d kg.", totalWeightRightSide));
         labelWeightRightSide.setFont(Font.font("Times New Roman", FontWeight.BOLD, 20));
         Label labelDifferenceInWeight = new Label(String.format("Difference: %.2f %%", Math.abs((double) (totalWeightLeftSide - totalWeightRightSide) / ((totalWeightLeftSide + totalWeightRightSide) / 2) * 100)));
 
@@ -108,8 +105,8 @@ public class FerrySystem extends Application {
 
 //        printStuffForDebugging(vehicles);
 
-//        Collections.sort(vehicles, Collections.reverseOrder());
-        vehicles.sort(Comparator.comparing(Vehicle::getWeightDistribution).reversed()); // This is cooler
+//        Collections.sort(vehicles, Collections.reverseOrder()); // Sort the list by weightDistribution using the compareTo method implemented in Vehicle
+        vehicles.sort(Comparator.comparing(Vehicle::getWeightDistribution).reversed()); // Method reference is cooler
 
         partitionList(vehicles);
     }
@@ -118,24 +115,20 @@ public class FerrySystem extends Application {
         int maxSpaceRight = 0, maxSpaceLeft = 0;
 
         for (Vehicle v : vehicles) {
-            if (getSumOfWeightDistribution(vehiclesLeftSide) <= getSumOfWeightDistribution(vehiclesRightSide) && maxSpaceLeft + v.getSpace() <= 100) { // Add the vehicle to the left side 1) if the sum of the weight distribution on the left side is less than or equal to the sum of the weight distribution on the right side and 2) if there is sufficient space for the vehicle
+            if (totalWeightLeftSide <= totalWeightRightSide && maxSpaceLeft + v.getSpace() <= 100) { // Add the vehicle to the left side 1) if the sum of the weight on the left side is less than or equal to the sum of the weight distribution on the right side and 2) if there is sufficient space for the vehicle
                 vehiclesLeftSide.add(v);
                 maxSpaceLeft += v.getSpace();
+                totalWeightLeftSide += v instanceof Car ? v.getWeightDistribution() : v.getWeightDistribution() * v.getSpace();
             } else if (maxSpaceRight + v.getSpace() <= 100) { // Else add the vehicle to the right side, if the right side has space
                 vehiclesRightSide.add(v);
                 maxSpaceRight += v.getSpace();
-            } else // Add the vehicle to the left side even if the sum of the weight distribution on the left side is greater than the sum of the weight distribution on the right side, if the other side is full. No body is left behind. There is no need to check if the left side has space here - it is guaranteed.
-                vehiclesLeftSide.add(v);
+                totalWeightRightSide += v instanceof Car ? v.getWeightDistribution() : v.getWeightDistribution() * v.getSpace();
+            }
+//            else { // Add the vehicle to the left side even if the sum of the weight distribution on the left side is greater than the sum of the weight on the right side, if the other side is full. No body is left behind. There is no need to check if the left side has space here - it is guaranteed.
+//                vehiclesLeftSide.add(v);
+//                totalWeightLeftSide += v instanceof Car ? v.getWeightDistribution() : v.getWeightDistribution() * v.getSpace();
+//            }
         }
-    }
-
-    public int getSumOfWeightDistribution(ArrayList<Vehicle> vehicles) {
-        int sum = 0;
-
-        for (Vehicle v : vehicles)
-            sum += v.getWeightDistribution();
-
-        return sum;
     }
 
     public GridPane getPane(ArrayList<Vehicle> vehicles, String side) {
@@ -165,8 +158,6 @@ public class FerrySystem extends Application {
                     else
                         pane.setStyle("-fx-border-style: hidden solid hidden solid; -fx-border-width: 4; -fx-border-color: black;" + ((v instanceof Car) ? "-fx-background-color: blue" : "-fx-background-color: red"));
                 }
-
-//                pane.getChildren().add(new Text(v.getSpace() + ""));
 
                 pane.setOnMouseClicked(event -> clickVehicle(v)); // Add the EventHandler for showing info upon mouse clicks
 
@@ -216,16 +207,6 @@ public class FerrySystem extends Application {
             }
 
         return indices;
-    }
-
-
-    public int getWeight(ArrayList<Vehicle> vehicles) {
-        int weight = 0;
-
-        for (Vehicle v : vehicles)
-            weight += v.getWeightDistribution();
-
-        return weight;
     }
 
     public void clickVehicle(Vehicle v) {
